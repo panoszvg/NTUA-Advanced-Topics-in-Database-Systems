@@ -24,4 +24,6 @@ res = spark.sql("SELECT Year, _c0 AS Movie_Code, _c1 AS Movie, p.Profit \
 				 ON (get_year(p._c3) == m.Year AND p.Profit == m.Profit) \
 				 ORDER By Year ASC")
 
-res.show()
+# res.show()
+
+res.coalesce(1).write.format("com.databricks.spark.csv").save("hdfs://master:9000/user/user/outputs/q1.csv")

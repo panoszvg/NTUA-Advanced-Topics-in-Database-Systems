@@ -36,4 +36,6 @@ bestAndWorstPerUser.registerTempTable("bestAndWorstPerUser")
 # run query
 res = spark.sql("SELECT m.Genre AS Genre, first(m.User) AS User, first(m.Rating) AS No_of_ratings, first(u.BestMovie) AS Favourite_Movie, first(u.BestRating) AS Favourite_Movie_Rating, first(u.WorstMovie) AS Least_Favourite_Movie, first(u.WorstRating) AS Least_Favourite_Movie_Rating FROM maxRatingsPerUser AS m JOIN bestAndWorstPerUser AS u ON (m.User == u.User AND m.Genre == u.Genre) GROUP BY m.Genre ORDER BY Genre ASC")
 
-res.show()
+# res.show()
+
+res.coalesce(1).write.format("com.databricks.spark.csv").save("hdfs://master:9000/user/user/outputs/q5.csv")

@@ -40,4 +40,6 @@ res = spark.sql("SELECT first(time_period(m._c3)) AS Time_Period, AVG(str_len(m.
                 WHERE (g._c1 == 'Drama' AND YEAR(m._c3) > 1999) \
                 GROUP BY time_period(m._c3) ORDER BY Time_Period ASC")
 
-res.show()
+# res.show()
+
+res.coalesce(1).write.format("com.databricks.spark.csv").save("hdfs://master:9000/user/user/outputs/q4.csv")
