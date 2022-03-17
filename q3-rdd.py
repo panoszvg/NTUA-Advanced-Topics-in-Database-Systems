@@ -28,8 +28,8 @@ res = rdd_ratings \
     .join(rdd_genres) \
     .map(lambda row: (row[1][1], (float(row[1][0]), 1))) \
     .reduceByKey(lambda x,y: (x[0] + y[0], x[1] + y[1])) \
-	.map(lambda x: (x[0], x[1][0] / x[1][1], x[1][1]))
-
+	.map(lambda x: (x[0], x[1][0] / x[1][1], x[1][1]))\
+	.sortBy(lambda x: x[1],ascending=False)
 # After join:
 #    862, (3.25, Animation)
 #    862, (3.25, Comedy)
@@ -40,11 +40,12 @@ res = rdd_ratings \
 
 
 
+
 df = spark.createDataFrame(res, ["Category", "Avg Rating", "Total Movies"])
 df.coalesce(1).write.format("com.databricks.spark.csv").mode('overwrite').save("hdfs://master:9000/user/user/outputs/q3-rdd.csv")
 
 
 timestamp_2 = time()
 print(timestamp_2 - timestamp_1)
-#for i in res.take(10):
-#	print(i)
+for i in res.take(10):
+	print(i)
