@@ -1,15 +1,31 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.types import IntegerType
+from pyspark.sql.types import *
+from time import time
+import argparse
 
-spark = SparkSession.builder.appName("q5-sql-csv").getOrCreate()
+parser = argparse.ArgumentParser()
+parser.add_argument('-c', '--csv', action='store_true', default=True)
+parser.add_argument('-p', '--parquet', action='store_true') # if this option is given, negates csv
+args = parser.parse_args()
+if args.parquet:
+    args.csv = False
+    spark = SparkSession.builder.appName("q5-sql").config("spark.sql.parquet.binaryAsString","true").getOrCreate()
+    movies = spark.read.parquet("hdfs://master:9000/user/user/files/movies.parquet")
+    genres = spark.read.parquet("hdfs://master:9000/user/user/files/movie_genres.parquet")
+    ratings = spark.read.parquet("hdfs://master:9000/user/user/files/ratings.parquet")
 
-movies = spark.read.format("csv").options(headers='false', inferSchema='true').load("hdfs://master:9000/user/user/files/movies.csv")
-genres = spark.read.format("csv").options(headers='false', inferSchema='true').load("hdfs://master:9000/user/user/files/movie_genres.csv")
-ratings = spark.read.format("csv").options(headers='false', inferSchema='true').load("hdfs://master:9000/user/user/files/ratings.csv")
+if args.csv:
+    spark = SparkSession.builder.appName("q5-sql").getOrCreate()
+    movies = spark.read.format("csv").options(headers='false', inferSchema='true').load("hdfs://master:9000/user/user/files/movies.csv")
+    genres = spark.read.format("csv").options(headers='false', inferSchema='true').load("hdfs://master:9000/user/user/files/movie_genres.csv")
+    ratings = spark.read.format("csv").options(headers='false', inferSchema='true').load("hdfs://master:9000/user/user/files/ratings.csv")
 
 movies.registerTempTable("movies")
 genres.registerTempTable("genres")
 ratings.registerTempTable("ratings")
+
+timestamp_1 = time()
+
 # add genres to movies and get necessary rows
 moviesWithGenres = spark.sql("SELECT m._c0 AS Id, m._c1 AS Title, m._c7 AS Popularity, g._c1 AS Genre FROM movies AS m FULL OUTER JOIN genres AS g ON (m._c0 == g._c0)")
 moviesWithGenres.registerTempTable("moviesWithGenres")
@@ -33,7 +49,10 @@ userWorstMovies = spark.sql("SELECT r._c0 AS User, r._c2 AS Rating, Title, Popul
 userWorstMovies.registerTempTable("userWorstMovies")
 bestAndWorstPerUser = spark.sql("SELECT b.Genre, b.User, b.Title AS BestMovie, b.Rating AS BestRating, w.Title AS WorstMovie, w.Rating AS WorstRating FROM userBestMovies AS b JOIN userWorstMovies AS w ON (b.User == w.User AND b.Genre == w.Genre)")
 bestAndWorstPerUser.registerTempTable("bestAndWorstPerUser")
+
 # run query
 res = spark.sql("SELECT m.Genre AS Genre, first(m.User) AS User, first(m.Rating) AS No_of_ratings, first(u.BestMovie) AS Favourite_Movie, first(u.BestRating) AS Favourite_Movie_Rating, first(u.WorstMovie) AS Least_Favourite_Movie, first(u.WorstRating) AS Least_Favourite_Movie_Rating FROM maxRatingsPerUser AS m JOIN bestAndWorstPerUser AS u ON (m.User == u.User AND m.Genre == u.Genre) GROUP BY m.Genre ORDER BY Genre ASC")
+res.coalesce(1).write.format("com.databricks.spark.csv").mode('overwrite').save("hdfs://master:9000/user/user/outputs/q5-sql.csv")
 
-res.show()
+timestamp_2 = time()
+print(timestamp_2 - timestamp_1)

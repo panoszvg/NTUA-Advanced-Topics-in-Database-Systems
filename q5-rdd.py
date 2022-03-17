@@ -1,4 +1,9 @@
 from pyspark.sql import SparkSession
+from time import time
+import csv
+from io import StringIO
+from pyspark.sql.types import *
+
 
 spark = SparkSession.builder.appName("q5-rdd").getOrCreate()
 
@@ -7,6 +12,8 @@ sc = spark.sparkContext
 rdd_genres = spark.read.csv("hdfs://master:9000/user/user/files/movie_genres.csv").rdd
 rdd_ratings = spark.read.csv("hdfs://master:9000/user/user/files/ratings.csv").rdd
 rdd_movies = spark.read.csv("hdfs://master:9000/user/user/files/movies.csv").rdd
+
+timestamp_1 = time()
 
 rdd_movies_t = rdd_movies\
     .map(lambda row: (row._c0, (row._c1,float(row._c7))))
@@ -64,6 +71,13 @@ res = rdd_genres\
     .map(lambda row: (row[0][1],row[0][0],row[1][0][0],row[1][0][1][2],row[1][0][1][1],row[1][1][2],row[1][1][1]))\
     .sortBy(lambda row: row[0])
 
+
+df = spark.createDataFrame(res, ["Genre", "User Id", "Max Ratings", "Best Movie Title", "Best Rating", "Worst Movie Title", "Worst Rating"])
+df.coalesce(1).write.format("com.databricks.spark.csv").mode('overwrite').save("hdfs://master:9000/user/user/outputs/q5-rdd.csv")
+
+
+timestamp_2 = time()
+print(timestamp_2 - timestamp_1)
 ## for max/min_rdd 
 # after join
 # (movie_id , (((user_id,rating),(title,popularity)),category))
@@ -73,5 +87,5 @@ res = rdd_genres\
 # join with user with most ratings (2 joings (min_rdd and max_rdd)
 # ( (user_id, category) , ((max_ratings,(movie_id,max_rating,title,popularity)),(movie_id,min_rating,title,popularity)))
 
-for i in res.take(20):
+for i in tmp_rdd.take(20):
     print(i)

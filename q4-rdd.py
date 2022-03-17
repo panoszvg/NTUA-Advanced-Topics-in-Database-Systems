@@ -1,4 +1,8 @@
 from pyspark.sql import SparkSession
+from time import time
+import csv
+from io import StringIO
+from pyspark.sql.types import *
 
 spark = SparkSession.builder.appName("q4-rdd").getOrCreate()
 
@@ -7,6 +11,8 @@ sc = spark.sparkContext
 rdd_movies = spark.read.csv("hdfs://master:9000/user/user/files/movies.csv").rdd
 rdd_genres = spark.read.csv("hdfs://master:9000/user/user/files/movie_genres.csv").rdd
 
+
+timestamp_1 = time()
 
 rdd_movies_t = rdd_movies\
     .map(lambda row: (row[0], (row[1],row[2],row[3])))\
@@ -33,5 +39,14 @@ res = rdd_genres \
     .map(lambda row: (row[0],row[1][0]/row[1][1]))\
     .sortBy(lambda row: row[0])
 
-for i in res.take(100):
-    print(i)
+
+df = spark.createDataFrame(res, ["5-Year Range", "Avg Overview Length in Words"])
+df.coalesce(1).write.format("com.databricks.spark.csv").mode('overwrite').save("hdfs://master:9000/user/user/outputs/q4-rdd.csv")
+
+
+timestamp_2 = time()
+print(timestamp_2 - timestamp_1)
+
+
+#for i in res.take(100):
+#    print(i)
